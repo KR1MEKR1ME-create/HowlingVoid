@@ -159,15 +159,15 @@
 	old_appendix = null
 
 /datum/quirk/sensitive_hearing // Teshari hearing but as a quirk
-	name = "Sensitive Hearing"
-	desc = "You can hear even the quietest of sounds, but you're more vulnerable to hearing damage as a result. NOTE: This is a direct downgrade for Teshari!"
+	name = "Чувствительный слух"
+	desc = "Вы можете слышать даже самые тихие звуки, но из-за этого повышается риск повреждения слуха."
 	icon = FA_ICON_HEADPHONES_SIMPLE
 	value = 6
-	hidden_quirk = TRUE // disabled until reworked.
+	hidden_quirk = FALSE // disabled until reworked.
 	mob_trait = TRAIT_SENSITIVE_HEARING
-	gain_text = span_notice("You could hear a pin drop from 10 feet away.")
-	lose_text = span_danger("Your hearing feels less sensitive.")
-	medical_record_text = "Patient scored very highly in hearing tests."
+	gain_text = span_notice("Падение булавки можно услышать на расстоянии 10 метров.")
+	lose_text = span_danger("Ваш слух становится менее чувствительным.")
+	medical_record_text = "Пациент показал очень высокие результаты при проверке слуха."
 	/// Teshari hearing is an action, so here is its holder
 	var/datum/action/cooldown/spell/teshari_hearing/hearing_action
 

@@ -12,4 +12,4 @@
 
 // You can become a vegan with food preferences
 /datum/quirk/vegetarian
-	hidden_quirk = TRUE
+	hidden_quirk = FALSE
