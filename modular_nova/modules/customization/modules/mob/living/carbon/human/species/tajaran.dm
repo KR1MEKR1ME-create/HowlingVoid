@@ -94,6 +94,53 @@
 	cat.dna.mutant_bodyparts["ears"] = list(MUTANT_INDEX_NAME = "Cat, Alert", MUTANT_INDEX_COLOR_LIST = list(main_color, second_color, second_color))
 	regenerate_organs(cat, src, visual_only = TRUE)
 	cat.update_body(TRUE)
+/*
+//Девять жизней
+/mob/living/carbon/human/tajaran
+	var/death_count = 0
+
+/mob/living/carbon/human/tajaran/death // Я правильно понимаю что только при гибе?
+	. = ..() // стандартный процесс смерти
+
+	death_count++
+
+	if(death_count >= 9 && !src.has_trait(TRAIT_DNR))
+		to_chat(src, span_danger("Ты чувствуешь, что это твоя последняя жизнь..."))
+		// Как это ввести? TRAIT_DNR, "do_not_revive"
+		visible_message(span_warning("[src] исчерпал все свои жизни и больше не встанет."))
+*/
+
+
+//найтвижен
+/datum/species/tajaran/on_species_gain(mob/living/carbon/human/H)
+	. = ..()
+	if(!H)
+		return
+
+	// Автоматически выдаём квирки
+	if(!H.quirks)
+		H.quirks = list()
+
+	// Проверка, чтобы не задваивались при смене вида
+	var/found_photophobia = FALSE
+	var/found_nightvision = FALSE
+	for(var/datum/quirk/Q in H.quirks)
+		if(istype(Q, /datum/quirk/photophobia))
+			found_photophobia = TRUE
+		if(istype(Q, /datum/quirk/night_vision))
+			found_nightvision = TRUE
+
+	if(!found_photophobia)
+		var/datum/quirk/photophobia/P = new()
+		P.quirk_holder = H
+		H.quirks += P
+		P.add(H.client)
+
+	if(!found_nightvision)
+		var/datum/quirk/night_vision/N = new()
+		N.quirk_holder = H
+		H.quirks += N
+		N.add(H.client)
 //Способность слуха
 /mob/living/carbon/human
 	var/datum/action/cooldown/spell/teshari_hearing
@@ -143,7 +190,7 @@
 		span_notice("[H] вылизывается!"),
 		span_notice("Ты вылизываешься!")
 	)
-	// 15 секундный прогресс-бар
+	// прогресс-бар
 	if(!do_after(H, 15 SECONDS, H)) {
 		// Сообщение при прерывании, зависит от пола
 		if(H.gender == FEMALE)
@@ -154,21 +201,21 @@
 	}
 
 	// Смываем кровь и грязь
-	H.wash(H)
+	H.wash(CLEAN_TYPE_BLOOD)
 
-	var/stopped = FALSE
+	var/heal_brute = 1 // Сколько отхилит брута
+	var/heal_burn = 0 // Сколько отхилит бёрна
+// Берём выбранный игроком bodypart
+	var/obj/item/bodypart/target_BP = H.get_bodypart(H.zone_selected)
+	if(target_BP)
+		if(target_BP.heal_damage(heal_brute, heal_burn))
+			H.update_damage_overlays()
 
-	// Проверяем все части тела на ранения
-	for(var/obj/item/bodypart/BP in H.bodyparts)
-		if(!BP.wounds)
-			continue
+		if(target_BP.wounds)
+			for(var/datum/wound/W in target_BP.wounds)
+				if(W.blood_flow > 0 && prob(45))
+					W.blood_flow = 0
 
-		for(var/datum/wound/W in BP.wounds)
-			if(W.blood_flow > 0 && prob(45))
-				W.blood_flow = 0
-				stopped = TRUE
-
-	// Сообщения после успешного вылизывания
 	if(H.gender == FEMALE) {
 		self_msg = "Ты вылизалась!"
 		around_msg = "[H] вылизалась!"
@@ -179,11 +226,6 @@
 
 	H.visible_message(span_notice(around_msg), span_notice(self_msg))
 
-	// Немного лечим брут-урон
-	if(H.getBruteLoss() > 0)
-		H.adjustBruteLoss(-1)
-
-	return ..()
 
 
 
@@ -206,7 +248,7 @@
 		list(
 			SPECIES_PERK_TYPE = SPECIES_POSITIVE_PERK,
 			SPECIES_PERK_ICON = FA_ICON_CAT,
-			SPECIES_PERK_NAME = "Кошачья ловкость",
+			SPECIES_PERK_NAME = "Инстинкт охотника",
 			SPECIES_PERK_DESC = "Таяры обладают очень хорошей реакцией. Они имеют шанс уклониться от любой атаки.",
 		),
 		list(
