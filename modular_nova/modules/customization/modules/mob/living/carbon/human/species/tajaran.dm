@@ -94,21 +94,41 @@
 	cat.dna.mutant_bodyparts["ears"] = list(MUTANT_INDEX_NAME = "Cat, Alert", MUTANT_INDEX_COLOR_LIST = list(main_color, second_color, second_color))
 	regenerate_organs(cat, src, visual_only = TRUE)
 	cat.update_body(TRUE)
-/*
-//Девять жизней
+
+
+// Зов охотника
+/mob/living/carbon/human/tajaran
+	// Переопределяем входящий урон
+	proc/try_dodge(damage, damagetype, def_zone, blocked, attack_text)
+		if(prob(90))
+			visible_message(
+				span_notice("[src] ловко уворачивается от удара, издавая угрожающее шипение!"),
+				span_notice("Ты увернулся от удара и зашипел!")
+			)
+			emote("hiss")
+			return TRUE
+		return FALSE
+
+/mob/living/carbon/human/tajaran/take_overall_damage(brute, burn, tox, oxy, clone, stamina, def_zone, blocked, attack_text)
+	if(try_dodge(brute+burn, "brute/burn", def_zone, blocked, attack_text))
+		return // полностью отменяем урон
+
+	. = ..() // если не увернулся — обычная обработка
+
+//Зов месы
 /mob/living/carbon/human/tajaran
 	var/death_count = 0
 
-/mob/living/carbon/human/tajaran/death // Я правильно понимаю что только при гибе?
-	. = ..() // стандартный процесс смерти
+/mob/living/carbon/human/tajaran/death(gibbed)
+	. = ..() // стандартная смерть
 
 	death_count++
 
-	if(death_count >= 9 && !src.has_trait(TRAIT_DNR))
+	if(death_count >= 9 && !HAS_TRAIT(src, TRAIT_DNR))
 		to_chat(src, span_danger("Ты чувствуешь, что это твоя последняя жизнь..."))
-		// Как это ввести? TRAIT_DNR, "do_not_revive"
-		visible_message(span_warning("[src] исчерпал все свои жизни и больше не встанет."))
-*/
+		ADD_TRAIT(src, TRAIT_DNR, ADMIN_TRAIT)
+		visible_message(span_warning("[src] испускает последний вздох... Меса забрала эту жизнь."))
+
 
 
 //найтвижен
