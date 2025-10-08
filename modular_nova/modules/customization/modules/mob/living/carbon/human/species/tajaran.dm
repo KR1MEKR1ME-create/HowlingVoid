@@ -94,54 +94,82 @@
 	cat.dna.mutant_bodyparts["ears"] = list(MUTANT_INDEX_NAME = "Cat, Alert", MUTANT_INDEX_COLOR_LIST = list(main_color, second_color, second_color))
 	regenerate_organs(cat, src, visual_only = TRUE)
 	cat.update_body(TRUE)
+// === Шерсть ===
+/*
+/datum/species/tajaran/body_temperature_alerts(mob/living/carbon/human/humi)
+	var/old_bodytemp = humi.old_bodytemperature
+	var/bodytemp = humi.bodytemperature
+
+	// локальные копии лимитов
+	var/local_bodytemp_heat_damage_limit = bodytemp_heat_damage_limit * 0.75
+	var/local_bodytemp_cold_damage_limit = bodytemp_cold_damage_limit * 0.75
+
+	var/local_BODYTEMP_HEAT_WARNING_2 = BODYTEMP_HEAT_WARNING_2 * 0.75
+	var/local_BODYTEMP_HEAT_WARNING_3 = BODYTEMP_HEAT_WARNING_3 * 0.75
+	var/local_BODYTEMP_COLD_WARNING_2 = BODYTEMP_COLD_WARNING_2 * 0.75
+	var/local_BODYTEMP_COLD_WARNING_3 = BODYTEMP_COLD_WARNING_3 * 0.75
+
+	// Body temperature is too hot, and we do not have resist traits
+	if(bodytemp > local_bodytemp_heat_damage_limit && !HAS_TRAIT(humi, TRAIT_RESISTHEAT))
+		humi.clear_mood_event("cold")
+		humi.add_mood_event("hot", /datum/mood_event/hot)
+		humi.remove_movespeed_modifier(/datum/movespeed_modifier/cold)
+
+		if(bodytemp in local_bodytemp_heat_damage_limit to local_BODYTEMP_HEAT_WARNING_2)
+			humi.throw_alert(ALERT_TEMPERATURE, /atom/movable/screen/alert/hot, 1)
+		else if(bodytemp in local_BODYTEMP_HEAT_WARNING_2 to local_BODYTEMP_HEAT_WARNING_3)
+			humi.throw_alert(ALERT_TEMPERATURE, /atom/movable/screen/alert/hot, 2)
+		else
+			humi.throw_alert(ALERT_TEMPERATURE, /atom/movable/screen/alert/hot, 3)
+
+	else if(bodytemp < local_bodytemp_cold_damage_limit && !HAS_TRAIT(humi, TRAIT_RESISTCOLD) && !humi.has_status_effect(/datum/status_effect/inebriated))
+		humi.clear_mood_event("hot")
+		humi.add_mood_event("cold", /datum/mood_event/cold)
+		humi.add_or_update_variable_movespeed_modifier(/datum/movespeed_modifier/cold, multiplicative_slowdown = ((local_bodytemp_cold_damage_limit - humi.bodytemperature) / COLD_SLOWDOWN_FACTOR))
+
+		if(bodytemp in local_BODYTEMP_COLD_WARNING_2 to local_bodytemp_cold_damage_limit)
+			humi.throw_alert(ALERT_TEMPERATURE, /atom/movable/screen/alert/cold, 1)
+		else if(bodytemp in local_BODYTEMP_COLD_WARNING_3 to local_BODYTEMP_COLD_WARNING_2)
+			humi.throw_alert(ALERT_TEMPERATURE, /atom/movable/screen/alert/cold, 2)
+		else
+			humi.throw_alert(ALERT_TEMPERATURE, /atom/movable/screen/alert/cold, 3)
+
+	else if (old_bodytemp > local_bodytemp_heat_damage_limit || old_bodytemp < local_bodytemp_cold_damage_limit)
+		humi.clear_alert(ALERT_TEMPERATURE)
+		humi.remove_movespeed_modifier(/datum/movespeed_modifier/cold)
+		humi.clear_mood_event("cold")
+		humi.clear_mood_event("hot")
+
+	humi.old_bodytemperature = bodytemp
+*/
+// Уворот от пуль
+/datum/species/tajaran/proc/on_tajaran_bullet_hit(mob/living/carbon/human/tajaran, obj/projectile/hit_projectile)
+	SIGNAL_HANDLER
+
+	if(prob(25) && tajaran.stat == CONSCIOUS) //25% шанса, если цель всё еще жива и не в крите
+		tajaran.visible_message(span_danger("[tajaran.get_visible_name()] [tajaran.gender == FEMALE ? "уклонилась" : "уклонился"] от пули!"))
+		INVOKE_ASYNC(tajaran, TYPE_PROC_REF(/mob, emote), "hiss")
+		playsound(tajaran.loc, "sound/items/weapons/effects/ric[rand(1, 5)]", 25, TRUE, -1)
+		return PROJECTILE_INTERRUPT_HIT
 
 
-// Зов охотника
-/mob/living/carbon/human/tajaran
-	// Переопределяем входящий урон
-	proc/try_dodge(damage, damagetype, def_zone, blocked, attack_text)
-		if(prob(90))
-			visible_message(
-				span_notice("[src] ловко уворачивается от удара, издавая угрожающее шипение!"),
-				span_notice("Ты увернулся от удара и зашипел!")
-			)
-			emote("hiss")
-			return TRUE
-		return FALSE
-
-/mob/living/carbon/human/tajaran/take_overall_damage(brute, burn, tox, oxy, clone, stamina, def_zone, blocked, attack_text)
-	if(try_dodge(brute+burn, "brute/burn", def_zone, blocked, attack_text))
-		return // полностью отменяем урон
-
-	. = ..() // если не увернулся — обычная обработка
-
-//Зов месы
-/mob/living/carbon/human/tajaran
+// Зов месы
+/datum/species/tajaran
 	var/death_count = 0
+	var/death_count_max = 8 // В результате ровно 9 смертей
 
-/mob/living/carbon/human/tajaran/death(gibbed)
-	. = ..() // стандартная смерть
-
-	death_count++
-
-	if(death_count >= 9 && !HAS_TRAIT(src, TRAIT_DNR))
-		to_chat(src, span_danger("Ты чувствуешь, что это твоя последняя жизнь..."))
-		ADD_TRAIT(src, TRAIT_DNR, ADMIN_TRAIT)
-		visible_message(span_warning("[src] испускает последний вздох... Меса забрала эту жизнь."))
-
-
-
-//найтвижен
-/datum/species/tajaran/on_species_gain(mob/living/carbon/human/H)
+/datum/species/tajaran/on_species_gain(mob/living/carbon/human/H, datum/species/old_species, pref_load, regenerate_icons, replace_missing)
 	. = ..()
 	if(!H)
 		return
+	// === Счётчик смертей и уворот от пуль ===
+	RegisterSignal(H, COMSIG_LIVING_DEATH, PROC_REF(on_tajaran_death))
+	RegisterSignal(H, COMSIG_PROJECTILE_PREHIT, PROC_REF(on_tajaran_bullet_hit))
 
-	// Автоматически выдаём квирки
+	// === Квёрки (ночное зрение и фотофобия) ===
 	if(!H.quirks)
 		H.quirks = list()
 
-	// Проверка, чтобы не задваивались при смене вида
 	var/found_photophobia = FALSE
 	var/found_nightvision = FALSE
 	for(var/datum/quirk/Q in H.quirks)
@@ -161,37 +189,43 @@
 		N.quirk_holder = H
 		H.quirks += N
 		N.add(H.client)
-//Способность слуха
-/mob/living/carbon/human
-	var/datum/action/cooldown/spell/teshari_hearing
 
-/datum/species/tajaran/on_species_gain(mob/living/carbon/human/H)
-	..()
-	if(H)
-		var/obj/item/organ/ears/ears = H.get_organ_slot(ORGAN_SLOT_EARS)
-		if(ears)
-			var/datum/action/cooldown/spell/teshari_hearing/hearing_action = new
-			hearing_action.Grant(H)
+	// === Способность слуха ===
+	var/obj/item/organ/ears/ears = H.get_organ_slot(ORGAN_SLOT_EARS)
+	if(ears)
+		var/datum/action/cooldown/spell/teshari_hearing/hearing_action = new
+		hearing_action.Grant(H)
 
+	// === Способность вылизываться ===
+	var/datum/action/cooldown/tajaran_grooming/G = new()
+	G.Grant(H)
 
-/datum/species/tajaran/on_species_loss(mob/living/carbon/human/H)
-	..()
-	if(H)
-		var/obj/item/organ/ears/ears = H.get_organ_slot(ORGAN_SLOT_EARS)
-		if(ears)
-			ears.damage_multiplier = initial(ears.damage_multiplier)
-
-// Способность зализывания ран
-/datum/species/tajaran/on_species_gain(mob/living/carbon/human/H)
+/datum/species/tajaran/on_species_loss(mob/living/carbon/human/H, datum/species/new_species, pref_load)
 	. = ..()
 	if(!H)
 		return
 
-	// Добавляем расовую способность
-	var/datum/action/cooldown/tajaran_grooming/G = new()
-	G.Grant(H)
+	UnregisterSignal(H, list(COMSIG_LIVING_DEATH, COMSIG_PROJECTILE_PREHIT))
+
+	var/obj/item/organ/ears/ears = H.get_organ_slot(ORGAN_SLOT_EARS)
+	if(ears)
+		ears.damage_multiplier = initial(ears.damage_multiplier)
 
 
+// === Счётчик смертей ===
+/datum/species/tajaran/proc/on_tajaran_death(mob/living/carbon/human/tajaran)
+	SIGNAL_HANDLER
+	death_count++
+	if(death_count == death_count_max)
+		to_chat(tajaran, span_danger("Ты чувствуешь, что это твоя последняя жизнь..."))
+	if(death_count < death_count_max)
+		return
+	if(!HAS_TRAIT(tajaran, TRAIT_DNR))
+		tajaran.visible_message(span_warning("[tajaran.get_visible_name()] исчерпал все свои жизни и больше не встанет."))
+		ADD_TRAIT(tajaran, TRAIT_DNR, ADMIN_TRAIT)
+
+
+// === Вылизывание ===
 /datum/action/cooldown/tajaran_grooming
 	name = "Уход за собой"
 	desc = "Ты вылизываешь шерсть, смывая кровь и грязь. Может остановить кровотечение и немного лечит."
@@ -203,46 +237,37 @@
 	if(!H)
 		return
 
-	var/self_msg = ""
-	var/around_msg = ""
-	// Сообщение о начале ухода
 	H.visible_message(
 		span_notice("[H] вылизывается!"),
 		span_notice("Ты вылизываешься!")
 	)
-	// прогресс-бар
-	if(!do_after(H, 15 SECONDS, H)) {
-		// Сообщение при прерывании, зависит от пола
+	if(!do_after(H, 15 SECONDS, H))
 		if(H.gender == FEMALE)
 			to_chat(H, span_warning("Ты отвлеклась и перестала вылизываться..."))
 		else
 			to_chat(H, span_warning("Ты отвлёкся и перестал вылизываться..."))
 		return
-	}
 
-	// Смываем кровь и грязь
 	H.wash(CLEAN_TYPE_BLOOD)
-
-	var/heal_brute = 1 // Сколько отхилит брута
-	var/heal_burn = 0 // Сколько отхилит бёрна
-// Берём выбранный игроком bodypart
+	var/heal_brute = 1
+	var/heal_burn = 0
 	var/obj/item/bodypart/target_BP = H.get_bodypart(H.zone_selected)
 	if(target_BP)
 		if(target_BP.heal_damage(heal_brute, heal_burn))
 			H.update_damage_overlays()
-
 		if(target_BP.wounds)
 			for(var/datum/wound/W in target_BP.wounds)
 				if(W.blood_flow > 0 && prob(45))
 					W.blood_flow = 0
 
-	if(H.gender == FEMALE) {
+	var/self_msg = ""
+	var/around_msg = ""
+	if(H.gender == FEMALE)
 		self_msg = "Ты вылизалась!"
 		around_msg = "[H] вылизалась!"
-	} else {
+	else
 		self_msg = "Ты вылизался!"
 		around_msg = "[H] вылизался!"
-	}
 
 	H.visible_message(span_notice(around_msg), span_notice(self_msg))
 
@@ -279,6 +304,12 @@
 		),
 		list(
 			SPECIES_PERK_TYPE = SPECIES_NEUTRAL_PERK,
+			SPECIES_PERK_ICON = FA_ICON_ANGRY,
+			SPECIES_PERK_NAME = "Шерсть",
+			SPECIES_PERK_DESC = "Вы хорошо переносите холод, но вам тяжело в жару. Интересный факт, а вы знали что шерсть хорошо горит? :)",
+		),
+		list(
+			SPECIES_PERK_TYPE = SPECIES_NEUTRAL_PERK,
 			SPECIES_PERK_ICON = FA_ICON_PERSON_FALLING,
 			SPECIES_PERK_NAME = "Мягкая посадка",
 			SPECIES_PERK_DESC = "Таяры не страдают от падений с высоты и приземляются на ноги.",
@@ -292,7 +323,7 @@
 		list(
 			SPECIES_PERK_TYPE = SPECIES_NEUTRAL_PERK,
 			SPECIES_PERK_ICON = FA_ICON_ANGRY,
-			SPECIES_PERK_NAME = "Кусаться",
+			SPECIES_PERK_NAME = "Кусаца :3",
 			SPECIES_PERK_DESC = "Таяры могут кусаться.",
 		),
 		list(
