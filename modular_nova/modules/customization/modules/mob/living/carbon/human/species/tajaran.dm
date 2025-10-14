@@ -193,9 +193,9 @@
 	SIGNAL_HANDLER
 
 	return COMPONENT_DODGE_SUCCEEDED
-	//if(prob(7))
-	//	return COMPONENT_DODGE_SUCCEEDED
-	//return COMPONENT_DODGE_FAILED
+	if(prob(25))
+		return COMPONENT_DODGE_SUCCEEDED
+	return COMPONENT_DODGE_FAILED
 
 // === Вылизывание ===
 /datum/action/cooldown/tajaran_grooming
