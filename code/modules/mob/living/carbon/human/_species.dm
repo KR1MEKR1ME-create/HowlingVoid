@@ -1004,7 +1004,7 @@ GLOBAL_LIST_EMPTY(features_by_species)
 			miss_chance = clamp(UNARMED_MISS_CHANCE_BASE - limb_accuracy + (puncher_brute_and_burn / 2), 0, UNARMED_MISS_CHANCE_MAX) //Limb miss chance + various damage. capped at 80 so there is at least a chance to land a hit.
 
 	//HOWLING VOID ADDITION START: уклонение в ближнем бою
-	if(target.stat == CONSCIOUS && SEND_SIGNAL(target, COMSIG_LIVING_DODGE_MELEE) & COMPONENT_DODGE_SUCCEEDED)
+	if(target.stat == CONSCIOUS && SEND_SIGNAL(target, COMSIG_LIVING_DODGE_MELEE, target) & COMPONENT_DODGE_SUCCEEDED)
 		miss_chance = 100
 	//HOWLING VOID ADDITION END
 
@@ -1148,7 +1148,7 @@ GLOBAL_LIST_EMPTY(features_by_species)
 	if(user.loc == target.loc)
 		return FALSE
 	//HOWLING VOID ADDITION START: уклонение в ближнем бою
-	if(target.stat == CONSCIOUS && SEND_SIGNAL(target, COMSIG_LIVING_DODGE_MELEE) & COMPONENT_DODGE_SUCCEEDED)
+	if(target.stat == CONSCIOUS && SEND_SIGNAL(target, COMSIG_LIVING_DODGE_MELEE, target) & COMPONENT_DODGE_SUCCEEDED)
 		return FALSE
 	//HOWLING VOID ADDITION END
 	user.disarm(target)
