@@ -250,7 +250,7 @@
 	//HOWLING VOID ADDITION START: уклонение в ближнем бою
 	if(target_mob.stat == CONSCIOUS && SEND_SIGNAL(target_mob, COMSIG_LIVING_DODGE_MELEE) & COMPONENT_DODGE_SUCCEEDED)
 		target_mob.visible_message(span_danger("[target_mob.get_visible_name()] [target_mob.gender == FEMALE ? "уклонилась" : "уклонился"] от удара!"))
-		final_force = 0
+		return TRUE
 	//HOWLING VOID ADDITION END
 
 	if(target_mob.attacked_by(src, user, modifiers, attack_modifiers) == ATTACK_FAILED)
