@@ -188,10 +188,10 @@
 /datum/species/tajaran/proc/tajaran_dodge_melee(mob/living/carbon/human/tajaran)
 	SIGNAL_HANDLER
 
-	return COMPONENT_DODGE_SUCCEEDED
-	//if(prob(7))
-	//	return COMPONENT_DODGE_SUCCEEDED
-	//return COMPONENT_DODGE_FAILED
+	if(prob(25))
+		INVOKE_ASYNC(tajaran, TYPE_PROC_REF(/mob/living/carbon/human, emote), "hiss")
+		return COMPONENT_DODGE_SUCCEEDED
+	return COMPONENT_DODGE_FAILED
 
 // === Вылизывание ===
 /datum/action/cooldown/tajaran_grooming
