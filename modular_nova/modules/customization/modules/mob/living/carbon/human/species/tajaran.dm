@@ -125,6 +125,7 @@
 	// === Счётчик смертей и уворот от пуль ===
 	RegisterSignal(H, COMSIG_LIVING_DEATH, PROC_REF(on_tajaran_death))
 	RegisterSignal(H, COMSIG_PROJECTILE_PREHIT, PROC_REF(on_tajaran_bullet_hit))
+	RegisterSignal(H, COMSIG_LIVING_DODGE_MELEE, PROC_REF(tajaran_dodge_melee))
 
 	// === Квирки (ночное зрение и фотофобия) ===
 	if(!H.quirks)
@@ -184,6 +185,12 @@
 		tajaran.visible_message(span_warning("[tajaran.get_visible_name()] исчерпал все свои жизни и больше не встанет."))
 		ADD_TRAIT(tajaran, TRAIT_DNR, ADMIN_TRAIT)
 
+/datum/species/tajaran/proc/tajaran_dodge_melee(mob/living/carbon/human/tajaran)
+	SIGNAL_HANDLER
+
+	//if(prob(7))
+	//	return COMPONENT_DODGE_SUCCEEDED
+	return COMPONENT_DODGE_FAILED
 
 // === Вылизывание ===
 /datum/action/cooldown/tajaran_grooming

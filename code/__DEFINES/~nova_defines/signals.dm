@@ -115,3 +115,9 @@
 
 /// Signal sent whenever a gun with a barrel booster toggles its barrel booster.
 #define COMSIG_GUN_BOOSTER_TOGGLED "gun_booster_toggled"
+
+//HOWLING VOID ADDITION START: уклонение от ударов в ближнем бою
+#define COMSIG_LIVING_DODGE_MELEE "living_dodge_melee"
+	#define COMPONENT_DODGE_FAILED (1<<0)
+	#define COMPONENT_DODGE_SUCCEEDED (1<<1)
+//HOWLING VOID ADDITION END
