@@ -94,54 +94,8 @@
 	cat.dna.mutant_bodyparts["ears"] = list(MUTANT_INDEX_NAME = "Cat, Alert", MUTANT_INDEX_COLOR_LIST = list(main_color, second_color, second_color))
 	regenerate_organs(cat, src, visual_only = TRUE)
 	cat.update_body(TRUE)
-// === Шерсть ===
-/*
-/datum/species/tajaran/body_temperature_alerts(mob/living/carbon/human/humi)
-	var/old_bodytemp = humi.old_bodytemperature
-	var/bodytemp = humi.bodytemperature
 
-	// локальные копии лимитов
-	var/local_bodytemp_heat_damage_limit = bodytemp_heat_damage_limit * 0.75
-	var/local_bodytemp_cold_damage_limit = bodytemp_cold_damage_limit * 0.75
 
-	var/local_BODYTEMP_HEAT_WARNING_2 = BODYTEMP_HEAT_WARNING_2 * 0.75
-	var/local_BODYTEMP_HEAT_WARNING_3 = BODYTEMP_HEAT_WARNING_3 * 0.75
-	var/local_BODYTEMP_COLD_WARNING_2 = BODYTEMP_COLD_WARNING_2 * 0.75
-	var/local_BODYTEMP_COLD_WARNING_3 = BODYTEMP_COLD_WARNING_3 * 0.75
-
-	// Body temperature is too hot, and we do not have resist traits
-	if(bodytemp > local_bodytemp_heat_damage_limit && !HAS_TRAIT(humi, TRAIT_RESISTHEAT))
-		humi.clear_mood_event("cold")
-		humi.add_mood_event("hot", /datum/mood_event/hot)
-		humi.remove_movespeed_modifier(/datum/movespeed_modifier/cold)
-
-		if(bodytemp in local_bodytemp_heat_damage_limit to local_BODYTEMP_HEAT_WARNING_2)
-			humi.throw_alert(ALERT_TEMPERATURE, /atom/movable/screen/alert/hot, 1)
-		else if(bodytemp in local_BODYTEMP_HEAT_WARNING_2 to local_BODYTEMP_HEAT_WARNING_3)
-			humi.throw_alert(ALERT_TEMPERATURE, /atom/movable/screen/alert/hot, 2)
-		else
-			humi.throw_alert(ALERT_TEMPERATURE, /atom/movable/screen/alert/hot, 3)
-
-	else if(bodytemp < local_bodytemp_cold_damage_limit && !HAS_TRAIT(humi, TRAIT_RESISTCOLD) && !humi.has_status_effect(/datum/status_effect/inebriated))
-		humi.clear_mood_event("hot")
-		humi.add_mood_event("cold", /datum/mood_event/cold)
-		humi.add_or_update_variable_movespeed_modifier(/datum/movespeed_modifier/cold, multiplicative_slowdown = ((local_bodytemp_cold_damage_limit - humi.bodytemperature) / COLD_SLOWDOWN_FACTOR))
-
-		if(bodytemp in local_BODYTEMP_COLD_WARNING_2 to local_bodytemp_cold_damage_limit)
-			humi.throw_alert(ALERT_TEMPERATURE, /atom/movable/screen/alert/cold, 1)
-		else if(bodytemp in local_BODYTEMP_COLD_WARNING_3 to local_BODYTEMP_COLD_WARNING_2)
-			humi.throw_alert(ALERT_TEMPERATURE, /atom/movable/screen/alert/cold, 2)
-		else
-			humi.throw_alert(ALERT_TEMPERATURE, /atom/movable/screen/alert/cold, 3)
-
-	else if (old_bodytemp > local_bodytemp_heat_damage_limit || old_bodytemp < local_bodytemp_cold_damage_limit)
-		humi.clear_alert(ALERT_TEMPERATURE)
-		humi.remove_movespeed_modifier(/datum/movespeed_modifier/cold)
-		humi.clear_mood_event("cold")
-		humi.clear_mood_event("hot")
-
-	humi.old_bodytemperature = bodytemp
-*/
 // Уворот от пуль
 /datum/species/tajaran/proc/on_tajaran_bullet_hit(mob/living/carbon/human/tajaran, obj/projectile/hit_projectile)
 	SIGNAL_HANDLER
@@ -162,11 +116,17 @@
 	. = ..()
 	if(!H)
 		return
+	//// === Шерсть ===
+	H.physiology.heat_mod += 0.25        // на 25% больше урона от жара
+	H.physiology.cold_mod -= 0.25        // на 25% меньше урона от холода
+	bodytemp_normal = 308
+	bodytemp_cold_damage_limit = 245
+	bodytemp_heat_damage_limit = 325
 	// === Счётчик смертей и уворот от пуль ===
 	RegisterSignal(H, COMSIG_LIVING_DEATH, PROC_REF(on_tajaran_death))
 	RegisterSignal(H, COMSIG_PROJECTILE_PREHIT, PROC_REF(on_tajaran_bullet_hit))
 
-	// === Квёрки (ночное зрение и фотофобия) ===
+	// === Квирки (ночное зрение и фотофобия) ===
 	if(!H.quirks)
 		H.quirks = list()
 
@@ -300,7 +260,7 @@
 			SPECIES_PERK_TYPE = SPECIES_POSITIVE_PERK,
 			SPECIES_PERK_ICON = FA_ICON_HEADPHONES_SIMPLE,
 			SPECIES_PERK_NAME = "Кошачий слух",
-			SPECIES_PERK_DESC = "Таяры лучше слышат. Вы можете слышать даже самые тихие звукии, но из-за этого повышается риск повреждения слуха.",
+			SPECIES_PERK_DESC = "Таяры лучше слышат. Вы можете слышать даже самые тихие звуки, но из-за этого повышается риск повреждения слуха.",
 		),
 		list(
 			SPECIES_PERK_TYPE = SPECIES_NEUTRAL_PERK,
