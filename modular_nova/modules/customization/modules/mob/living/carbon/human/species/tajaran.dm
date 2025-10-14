@@ -160,6 +160,10 @@
 	var/datum/action/cooldown/tajaran_grooming/G = new()
 	G.Grant(H)
 
+	// === Кошачий нюх ===
+	var/datum/action/cooldown/tajaran_scent_scan/scent = new()
+	scent.Grant(H)
+
 /datum/species/tajaran/on_species_loss(mob/living/carbon/human/H, datum/species/new_species, pref_load)
 	. = ..()
 	if(!H)
@@ -171,7 +175,7 @@
 	if(ears)
 		ears.damage_multiplier = initial(ears.damage_multiplier)
 
-
+	H.remove_status_effect(/datum/status_effect/agent_pinpointer/scan/tajaran_scent)
 // === Счётчик смертей ===
 /datum/species/tajaran/proc/on_tajaran_death(mob/living/carbon/human/tajaran)
 	SIGNAL_HANDLER
@@ -230,8 +234,229 @@
 		around_msg = "[H] вылизался!"
 
 	H.visible_message(span_notice(around_msg), span_notice(self_msg))
+// === Кошачий нюх ===
+/datum/action/cooldown/tajaran_scent_scan
+	name = "Охотничий нюх"
+	desc = "Таяры могут принюхаться, чтобы ощутить свежие следы рядом и отследить носителя отпечатков."
+	button_icon = 'modular_nova/modules/organs/icons/cyber_tongue.dmi'
+	button_icon_state = "cybertongue"
+	cooldown_time = 30 SECONDS
+	check_flags = AB_CHECK_CONSCIOUS
+
+/datum/action/cooldown/tajaran_scent_scan/Activate(atom/target)
+	var/mob/living/carbon/human/H = owner
+	if(!H)
+		return FALSE
+
+	var/turf/current_turf = get_turf(H)
+	if(!current_turf)
+		return FALSE
+
+	H.visible_message(
+		span_notice("[H] принюхивается, пытаясь уловить следы."),
+		span_notice("Ты принюхиваешься, пытаясь уловить следы.")
+	)
+
+	if(!do_after(H, 3 SECONDS, H))
+		to_chat(H, span_warning("Ты теряешь след."))
+		return FALSE
+
+	var/list/atoms_to_scan = list(current_turf)
+	for(var/atom/movable/thing in current_turf)
+		if(thing == H)
+			continue
+		if(thing.invisibility > H.see_invisible)
+			continue
+		atoms_to_scan += thing
+
+	var/list/messages = list()
+	var/list/fingerprints_found = list()
+
+	for(var/atom/scanned_atom as anything in atoms_to_scan)
+		var/list/log_entry = gather_forensic_data(scanned_atom)
+		if(!length(log_entry))
+			continue
+
+		var/formatted_message = format_forensic_message(scanned_atom, log_entry)
+		if(formatted_message)
+			messages += formatted_message
+
+		var/list/found_prints = log_entry[DETSCAN_CATEGORY_FINGERS]
+		if(LAZYLEN(found_prints))
+			for(var/print in found_prints)
+				if(!istext(print))
+					continue
+				if(print in fingerprints_found)
+					continue
+				fingerprints_found += print
+
+	if(!LAZYLEN(messages))
+		to_chat(H, span_notice("Ты не чуешь ничего примечательного."))
+		StartCooldown()
+		return TRUE
+
+	H.balloon_alert(H, "запах уловлен")
+	to_chat(H, span_notice("Ты улавливаешь запахи вокруг:"))
+	for(var/entry in messages)
+		to_chat(H, span_info(entry))
+
+	var/mob/living/carbon/human/target_to_track = find_best_target(H, fingerprints_found)
+	if(target_to_track)
+		H.remove_status_effect(/datum/status_effect/agent_pinpointer/scan/tajaran_scent)
+		var/datum/status_effect/agent_pinpointer/scan/tajaran_scent/scent_effect = H.apply_status_effect(/datum/status_effect/agent_pinpointer/scan/tajaran_scent)
+		if(scent_effect)
+			scent_effect.set_target(target_to_track)
+			to_chat(H, span_notice("Запах ведёт к [target_to_track]."))
+	else if(LAZYLEN(fingerprints_found))
+		to_chat(H, span_warning("Запах отпечатков ни с кем не совпадает."))
+
+	StartCooldown()
+	return TRUE
 
 
+/datum/action/cooldown/tajaran_scent_scan/proc/gather_forensic_data(atom/scanned_atom)
+	if(!scanned_atom)
+		return list()
+
+	var/list/log_entry = list()
+
+	var/list/atom_fibers = GET_ATOM_FIBRES(scanned_atom)
+	if(LAZYLEN(atom_fibers))
+		log_entry[DETSCAN_CATEGORY_FIBER] = atom_fibers.Copy()
+
+	var/list/blood = GET_ATOM_BLOOD_DNA(scanned_atom)
+	if(LAZYLEN(blood))
+		log_entry[DETSCAN_CATEGORY_BLOOD] = blood.Copy()
+
+	if(ishuman(scanned_atom))
+		var/mob/living/carbon/human/scanned_human = scanned_atom
+		if(!scanned_human.gloves)
+			var/fingerprint = md5(scanned_human.dna?.unique_identity)
+			if(fingerprint)
+				LAZYADD(log_entry[DETSCAN_CATEGORY_FINGERS], fingerprint)
+	else if(!ismob(scanned_atom))
+		var/list/atom_fingerprints = GET_ATOM_FINGERPRINTS(scanned_atom)
+		if(LAZYLEN(atom_fingerprints))
+			log_entry[DETSCAN_CATEGORY_FINGERS] = atom_fingerprints.Copy()
+
+	if(scanned_atom.reagents)
+		for(var/datum/reagent/present_reagent as anything in scanned_atom.reagents.reagent_list)
+			LAZYADD(log_entry[DETSCAN_CATEGORY_DRINK], list(present_reagent.name = present_reagent.volume))
+
+			if(istype(present_reagent, /datum/reagent/blood))
+				var/list/reagent_data = present_reagent.data
+				if(islist(reagent_data))
+					var/blood_DNA = reagent_data["blood_DNA"]
+					var/blood_type = reagent_data["blood_type"]
+					if(blood_DNA && blood_type)
+						if(!log_entry[DETSCAN_CATEGORY_BLOOD])
+							log_entry[DETSCAN_CATEGORY_BLOOD] = list()
+						LAZYSET(log_entry[DETSCAN_CATEGORY_BLOOD], blood_DNA, blood_type)
+
+	return log_entry
+
+
+/datum/action/cooldown/tajaran_scent_scan/proc/format_forensic_message(atom/scanned_atom, list/log_entry)
+	if(!length(log_entry))
+		return null
+
+	var/list/lines = list("<b>\\The [scanned_atom]</b>")
+
+	var/list/fibers = log_entry[DETSCAN_CATEGORY_FIBER]
+	if(LAZYLEN(fibers))
+		lines += "&bull; Волокна: [english_list(fibers)]"
+
+	var/list/blood_data = log_entry[DETSCAN_CATEGORY_BLOOD]
+	if(LAZYLEN(blood_data))
+		var/list/blood_lines = list()
+		for(var/blood_identity in blood_data)
+			var/blood_type = blood_data[blood_identity] || "неизвестно"
+			blood_lines += "[blood_identity] ([blood_type])"
+		lines += "&bull; Следы крови: [blood_lines.Join(", ")]"
+
+	var/list/prints = log_entry[DETSCAN_CATEGORY_FINGERS]
+	if(LAZYLEN(prints))
+		lines += "&bull; Отпечатки: [prints.Join(", ")]"
+
+	var/list/reagent_traces = log_entry[DETSCAN_CATEGORY_DRINK]
+	if(LAZYLEN(reagent_traces))
+		var/list/reagent_lines = list()
+		for(var/reagent_name in reagent_traces)
+			var/amount = reagent_traces[reagent_name]
+			reagent_lines += "[reagent_name] ([round(amount, 0.1)] u)"
+		lines += "&bull; Частицы: [reagent_lines.Join(", ")]"
+
+	return lines.Join("<br>")
+
+
+/datum/action/cooldown/tajaran_scent_scan/proc/find_best_target(mob/living/carbon/human/sniffer, list/fingerprints)
+	if(!sniffer || !LAZYLEN(fingerprints))
+		return null
+
+	var/list/fingerprint_lookup = list()
+	for(var/fingerprint in fingerprints)
+		if(istext(fingerprint))
+			fingerprint_lookup[fingerprint] = TRUE
+
+	if(!LAZYLEN(fingerprint_lookup))
+		return null
+
+	var/turf/sniffer_turf = get_turf(sniffer)
+	var/mob/living/carbon/human/best_target
+	var/best_distance = INFINITY
+
+	for(var/mob/living/carbon/human/candidate as anything in GLOB.human_list)
+		if(candidate == sniffer)
+			continue
+		if(QDELETED(candidate))
+			continue
+		if(candidate.stat == DEAD)
+			continue
+		if(!candidate.dna?.unique_identity)
+			continue
+
+		var/current_fingerprint = md5(candidate.dna.unique_identity)
+		if(!fingerprint_lookup[current_fingerprint])
+			continue
+
+		var/turf/candidate_turf = get_turf(candidate)
+		if(!candidate_turf || !sniffer_turf)
+			continue
+
+		var/dist = get_dist(sniffer_turf, candidate_turf)
+		if(isnull(best_target) || dist < best_distance)
+			best_distance = dist
+			best_target = candidate
+
+	return best_target
+
+
+/datum/status_effect/agent_pinpointer/scan/tajaran_scent
+	id = "tajaran_scent"
+	duration = 45 SECONDS
+	tick_interval = 2 SECONDS
+	minimum_range = 1
+	range_mid = 6
+	range_far = 20
+	range_fuzz_factor = 0
+	alert_type = /atom/movable/screen/alert/status_effect/agent_pinpointer/scan/tajaran_scent
+	var/datum/weakref/target_ref
+
+/datum/status_effect/agent_pinpointer/scan/tajaran_scent/proc/set_target(mob/living/carbon/human/target)
+	if(target)
+		target_ref = WEAKREF(target)
+	else
+		target_ref = null
+	scan_target = target
+
+/datum/status_effect/agent_pinpointer/scan/tajaran_scent/scan_for_target()
+	scan_target = target_ref?.resolve()
+	if(!scan_target)
+		qdel(src)
+
+/atom/movable/screen/alert/status_effect/agent_pinpointer/scan/tajaran_scent
+	name = "След"
+	desc = "Ты чувствуешь направление источника запаха."
 
 
 /datum/species/tajaran/create_pref_unique_perks()
@@ -261,6 +486,12 @@
 			SPECIES_PERK_ICON = FA_ICON_HEADPHONES_SIMPLE,
 			SPECIES_PERK_NAME = "Кошачий слух",
 			SPECIES_PERK_DESC = "Таяры лучше слышат. Вы можете слышать даже самые тихие звуки, но из-за этого повышается риск повреждения слуха.",
+		),
+		list(
+			SPECIES_PERK_TYPE = SPECIES_POSITIVE_PERK,
+			SPECIES_PERK_ICON = FA_ICON_HEADPHONES_SIMPLE,
+			SPECIES_PERK_NAME = "Кошачий нюх",
+			SPECIES_PERK_DESC = "У таяр - отменный нюх. Вы можете принюхаться, чтобы найти свежие следы поблизости и отследить носителя отпечатков!",
 		),
 		list(
 			SPECIES_PERK_TYPE = SPECIES_NEUTRAL_PERK,
