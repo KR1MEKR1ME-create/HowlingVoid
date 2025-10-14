@@ -160,7 +160,7 @@
 	var/datum/action/cooldown/tajaran_grooming/G = new()
 	G.Grant(H)
 
-	// === Охотничий нюх ===
+	// === Кошачий нюх ===
 	var/datum/action/cooldown/tajaran_scent_scan/scent = new()
 	scent.Grant(H)
 
@@ -234,7 +234,7 @@
 		around_msg = "[H] вылизался!"
 
 	H.visible_message(span_notice(around_msg), span_notice(self_msg))
-
+// === Кошачий нюх ===
 /datum/action/cooldown/tajaran_scent_scan
 	name = "Охотничий нюх"
 	desc = "Таяры могут принюхаться, чтобы ощутить свежие следы рядом и отследить носителя отпечатков."
