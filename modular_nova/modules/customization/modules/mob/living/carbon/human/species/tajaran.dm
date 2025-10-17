@@ -355,8 +355,7 @@
 
 	if(scanned_atom.reagents)
 		for(var/datum/reagent/present_reagent as anything in scanned_atom.reagents.reagent_list)
-			LAZYSET(log_entry, DETSCAN_CATEGORY_DRINK, list(present_reagent.name = present_reagent.volume))
-
+			LAZYSET(log_entry, DETSCAN_CATEGORY_REAGENTS, list(present_reagent.name = present_reagent.volume))
 			if(istype(present_reagent, /datum/reagent/blood))
 				var/list/reagent_data = present_reagent.data
 				if(islist(reagent_data))
@@ -391,22 +390,22 @@
 		lines += "&bull; Следы крови: [blood_lines.Join(", ")]"
 
 	//Отпечатки
-	/*
+
 	var/list/prints = log_entry[DETSCAN_CATEGORY_FINGERS]
 	if(LAZYLEN(prints))
 		lines += "&bull; Отпечатки: [prints.Join(", ")]"
-	*/
+
 
 	//Реагенты
-	/*
-	var/list/reagent_traces = log_entry[DETSCAN_CATEGORY_DRINK]
+
+	var/list/reagent_traces = log_entry[DETSCAN_CATEGORY_REAGENTS]
 	if(LAZYLEN(reagent_traces))
 		var/list/reagent_lines = list()
 		for(var/reagent_name in reagent_traces)
 			var/amount = reagent_traces[reagent_name]
 			reagent_lines += "[reagent_name] ([round(amount, 0.1)] u)"
 		lines += "&bull; Частицы: [reagent_lines.Join(", ")]"
-	*/
+
 	return lines.Join("<br>")
 
 
