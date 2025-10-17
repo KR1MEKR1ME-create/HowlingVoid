@@ -598,7 +598,7 @@ GLOBAL_LIST_INIT(holiday_mail, list())
 	holiday_colors = list(COLOR_TRUE_BLUE, COLOR_TANGERINE_YELLOW)
 
 /datum/holiday/ukraine/getStationPrefix()
-	return pick("Киев", "Малороссия", "Новороссия", "Слабожанщина", "Галичина")
+	return pick("Киев", "Малоруссии", "Новороссия", "Слабожанщина", "Галичина")
 
 // SEPTEMBER
 
