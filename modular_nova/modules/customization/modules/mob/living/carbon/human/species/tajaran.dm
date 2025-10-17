@@ -102,6 +102,7 @@
 
 	if(prob(25) && tajaran.stat == CONSCIOUS) //25% шанса, если цель всё еще жива и не в крите
 		tajaran.visible_message(span_danger("[tajaran.get_visible_name()] [tajaran.gender == FEMALE ? "уклонилась" : "уклонился"] от пули!"))
+		INVOKE_ASYNC(tajaran, TYPE_PROC_REF(/mob, emote), "jump")
 		INVOKE_ASYNC(tajaran, TYPE_PROC_REF(/mob, emote), "hiss")
 		playsound(tajaran.loc, "sound/items/weapons/effects/ric[rand(1, 5)]", 25, TRUE, -1)
 		return PROJECTILE_INTERRUPT_HIT
@@ -193,6 +194,7 @@
 	SIGNAL_HANDLER
 
 	if(prob(25))
+		INVOKE_ASYNC(tajaran, TYPE_PROC_REF(/mob/living/carbon/human, emote), "jump")
 		INVOKE_ASYNC(tajaran, TYPE_PROC_REF(/mob/living/carbon/human, emote), "hiss")
 		return COMPONENT_DODGE_SUCCEEDED
 	return COMPONENT_DODGE_FAILED
