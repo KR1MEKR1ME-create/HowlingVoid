@@ -248,13 +248,11 @@
 // === Визуальный предмет в руке во время принюхивания ===
 /obj/item/hand_item/tajaran_scent_focus
 	name = "scent focus"
-	desc = "Ты сосредоточился на запахах вокруг."
-	icon = 'icons/mob/simple/animal.dmi' // можешь поменять на свой dmi
-	icon_state = "heart"                  // и стейт тоже
+	button_icon = 'modular_nova/modules/organs/icons/cyber_tongue.dmi'
+	button_icon_state = "cybertongue"
 	inhand_icon_state = "nothing"
-	// одноразовый визуальный маркер — запретим класть в контейнеры и т.п.
 	flags_1 = NONE
-	item_flags = ABSTRACT | DROPDEL // если выпало — удалится само
+	item_flags = ABSTRACT | DROPDEL
 
 // === Кошачий нюх ===
 /datum/action/cooldown/tajaran_scent_scan
@@ -284,7 +282,7 @@
 
 // Сам предмет, который появляется в руке
 /obj/item/hand_item/tajaran_scent_focus
-	name = "нюх"
+	name = "Нюх"
 	desc = "Фокус концентрации таяры, помогает направить обострённый нюх на конкретную цель."
 	icon = 'modular_nova/modules/organs/icons/cyber_tongue.dmi'
 	icon_state = "cybertongue"
