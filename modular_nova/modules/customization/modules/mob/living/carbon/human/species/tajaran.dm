@@ -252,7 +252,6 @@
 	icon = 'icons/mob/simple/animal.dmi' // можешь поменять на свой dmi
 	icon_state = "heart"                  // и стейт тоже
 	inhand_icon_state = "nothing"
-	w_class = WEIGHT_CLASS_TINY
 	// одноразовый визуальный маркер — запретим класть в контейнеры и т.п.
 	flags_1 = NONE
 	item_flags = ABSTRACT | DROPDEL // если выпало — удалится само
@@ -316,7 +315,7 @@
 	return ITEM_INTERACT_SUCCESS
 
 
-// Основная логика сканирования (чтобы не дублировать код)
+// Основная логика сканирования
 /datum/action/cooldown/tajaran_scent_scan/proc/perform_scan(mob/living/carbon/human/H, atom/target)
 	var/list/log_entry = gather_forensic_data(target)
 	if(!LAZYLEN(log_entry))
