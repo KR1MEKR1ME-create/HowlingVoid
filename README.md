@@ -7,16 +7,16 @@
 
 [![resentment](.github/images/badges/built-with-resentment.svg)](.github/images/comics/131-bug-free.png) [![technical debt](.github/images/badges/contains-technical-debt.svg)](.github/images/comics/106-tech-debt-modified.png) [![forinfinityandbyond](.github/images/badges/made-in-byond.gif)](https://www.reddit.com/r/SS13/comments/5oplxp/what_is_the_main_problem_with_byond_as_an_engine/dclbu1a)
 
-| Website                 | Link                                                                                                                                   |
-| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| Шпаргалка по Git / GitHub | [https://www.notion.so/Git-GitHub-61bc81766b2e4c7d9a346db3078ce833](https://www.notion.so/Git-GitHub-61bc81766b2e4c7d9a346db3078ce833) |
+| Website                      | Link                                                                                                                                   |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Шпаргалка по Git / GitHub    | [https://www.notion.so/Git-GitHub-61bc81766b2e4c7d9a346db3078ce833](https://www.notion.so/Git-GitHub-61bc81766b2e4c7d9a346db3078ce833) |
 | Руководство по модуляризации | [./modular_nova/readme.md](./modular_nova/readme.md)                                                                                   |
-| Гайд по зеркалированию      | [./modular_nova/mirroring_guide.md](./modular_nova/mirroring_guide.md)                                                                 |
-| Код                    | [https://github.com/NovaSector/NovaSector](https://github.com/NovaSector/NovaSector)                                                   |
-| Вики                    | [https://wiki.novasector13.com](https://wiki.novasector13.com)                                                                         |
-| Codedocs                | [https://NovaSector.github.io/NovaSector/](https://NovaSector.github.io/NovaSector/)                                                   |
-| Дискорд Нова Сектора   | [https://discord.gg/novasector](https://discord.gg/novasector)                                                                         |
-| Coderbus Discord        | [https://discord.gg/Vh8TJp9](https://discord.gg/Vh8TJp9)                                                                               |
+| Гайд по зеркалированию       | [./modular_nova/mirroring_guide.md](./modular_nova/mirroring_guide.md)                                                                 |
+| Код                          | [https://github.com/NovaSector/NovaSector](https://github.com/NovaSector/NovaSector)                                                   |
+| Вики                         | [https://wiki.novasector13.com](https://wiki.novasector13.com)                                                                         |
+| Codedocs                     | [https://NovaSector.github.io/NovaSector/](https://NovaSector.github.io/NovaSector/)                                                   |
+| Дискорд Нова Сектора         | [https://discord.gg/novasector](https://discord.gg/novasector)                                                                         |
+| Coderbus Discord             | [https://discord.gg/Vh8TJp9](https://discord.gg/Vh8TJp9)                                                                               |
 
 Это ответвление Howling Void от Nova Sector /tg/station, созданное в byond.
 **Обратите внимание, что этот репозиторий содержит материалы сексуального характера и не подходит для лиц младше 18 лет.**
@@ -47,7 +47,7 @@ Space Station 13 — это пропитанная паранойей раунд
 
 **Долгий путь**. Найдите `bin/build.cmd` в этой папке и дважды щёлкните по нему, чтобы начать сборку. Сборка состоит из нескольких этапов и может занять от 1 до 5 минут. Если она закроется, это означает, что работа завершена. Затем вы можете [настроить сервер](.github/guides/RUNNING_A_SERVER.md) обычным способом, открыв `tgstation.dmb` в DreamDaemon.
 
-**Сборка таким образом устарела и может вызывать такие ошибки `'tgui.bundle.js': cannot find file`.
+\*\*Сборка таким образом устарела и может вызывать такие ошибки `'tgui.bundle.js': cannot find file`.
 
 **[Как скомпилировать в VSCode и другие параметры сборки](tools/build/README.md).**
 
