@@ -115,6 +115,8 @@
 
 /datum/species/tajaran/on_species_gain(mob/living/carbon/human/H, datum/species/old_species, pref_load, regenerate_icons, replace_missing)
 	. = ..()
+	var/datum/action/cooldown/tajaran_scent_tracking/track = new()
+	track.Grant(H)
 	if(!H)
 		return
 	//// === Шерсть ===
@@ -254,13 +256,35 @@
 	flags_1 = NONE
 	item_flags = ABSTRACT | DROPDEL
 
-// === Кошачий нюх ===
+// ============================================================================
+// Tajaran scent tracking system — full version
+// ============================================================================
+/*
+// === forensic defines ===
+#define DETSCAN_CATEGORY_FIBER     "fibers"
+#define DETSCAN_CATEGORY_BLOOD     "blood"
+#define DETSCAN_CATEGORY_FINGERS   "prints"
+#define DETSCAN_CATEGORY_REAGENTS  "reagents"
+*/
+// --- доп. переменные для таяры ---
+/mob/living/carbon/human
+	var/datum/weakref/tajaran_scent_target
+
+/mob/living/carbon/human/proc/clear_tajaran_scent_target()
+	if(tajaran_scent_target)
+		tajaran_scent_target = null
+		balloon_alert(src, "следы выветрились")
+
+// ============================================================================
+// === SCENT SCAN ABILITY ===
+// ============================================================================
+
 /datum/action/cooldown/tajaran_scent_scan
 	name = "Охотничий нюх"
-	desc = "Таяры могут принюхаться к цели, чтобы уловить следы и определить, кто здесь был."
+	desc = "Таяры принюхиваются, улавливая кровь, волокна, отпечатки и частицы. Если найдены отпечатки — можно выследить носителя."
 	button_icon = 'modular_nova/modules/organs/icons/cyber_tongue.dmi'
 	button_icon_state = "cybertongue"
-	cooldown_time = 30 SECONDS
+	cooldown_time = 6 SECONDS
 	check_flags = AB_CHECK_CONSCIOUS
 	click_to_activate = TRUE
 
@@ -269,172 +293,227 @@
 	if(!H)
 		return FALSE
 
-	// Спавним временный предмет-фокус
-	var/obj/item/hand_item/tajaran_scent_focus/fx = new
-	if(!H.put_in_hands(fx))
-		to_chat(H, span_warning("Твои руки заняты. Освободи руку, чтобы принюхаться."))
-		qdel(fx)
-		return FALSE
+	if(!target)
+		target = get_turf(H)
 
-	to_chat(H, span_notice("Ты готовишься принюхаться. Кликни по объекту, чтобы начать."))
-	return TRUE
+	if(get_dist(get_turf(H), get_turf(target)) > 1)
+		H.balloon_alert(H, "слишком далеко")
+		StartCooldown(2 SECONDS)
+		return TRUE
 
-
-// Сам предмет, который появляется в руке
-/obj/item/hand_item/tajaran_scent_focus
-	name = "Нюх"
-	desc = "Фокус концентрации таяры, помогает направить обострённый нюх на конкретную цель."
-	icon = 'modular_nova/modules/organs/icons/cyber_tongue.dmi'
-	icon_state = "cybertongue"
-	item_flags = DROPDEL
-	inhand_icon_state = "cybertongue"
-
-/obj/item/hand_item/tajaran_scent_focus/interact_with_atom(atom/interacting_with, mob/living/user, list/modifiers)
-	if(!istype(user, /mob/living/carbon/human))
-		return ITEM_INTERACT_BLOCKING
-
-	var/mob/living/carbon/human/H = user
-	to_chat(H, span_notice("Ты принюхиваешься к [interacting_with]..."))
+	H.face_atom(target)
 	H.visible_message(
-		span_notice("[H] принюхивается к [interacting_with]."),
-		span_notice("Ты сосредотачиваешься, улавливая запахи.")
+		span_notice("[H] принюхивается к [target]."),
+		span_notice("Ты принюхиваешься, пытаясь уловить запах.")
 	)
+	if(!do_after(H, 3 SECONDS, target))
+		H.balloon_alert(H, "теряешь след")
+		StartCooldown(2 SECONDS)
+		return TRUE
 
-	if(!do_after(H, 3 SECONDS, interacting_with))
-		to_chat(H, span_warning("Ты теряешь след."))
-		qdel(src)
-		return ITEM_INTERACT_SUCCESS
+	var/list/messages = list()
+	var/list/fingerprints_found = list()
 
-	// После завершения — активируем сканирование
-	var/datum/action/cooldown/tajaran_scent_scan/scan_action = new
-	scan_action.perform_scan(H, interacting_with)
+	for(var/atom/scanned as anything in (isobj(target) ? list(target) : get_turf(target)))
+		var/list/log = gather_forensic_data(scanned)
+		if(!LAZYLEN(log))
+			continue
 
-	qdel(src)
-	return ITEM_INTERACT_SUCCESS
+		var/list/text = format_forensic_message(scanned, log)
+		if(LAZYLEN(text))
+			messages += text
 
+		var/list/prints = log[DETSCAN_CATEGORY_FINGERS]
+		if(LAZYLEN(prints))
+			for(var/p in prints)
+				if(istext(p) && !(p in fingerprints_found))
+					fingerprints_found += p
 
-// Основная логика сканирования
-/datum/action/cooldown/tajaran_scent_scan/proc/perform_scan(mob/living/carbon/human/H, atom/target)
-	var/list/log_entry = gather_forensic_data(target)
-	if(!LAZYLEN(log_entry))
-		to_chat(H, span_notice("Ты не чуешь ничего примечательного."))
-		StartCooldown()
-		return
+	if(!LAZYLEN(messages))
+		H.balloon_alert(H, "ничего не чуешь")
+	else
+		H.balloon_alert(H, "запах уловлен")
+		for(var/txt in messages)
+			to_chat(H, span_info(txt))
 
-	var/list/messages = format_forensic_message(target, log_entry)
-	if(LAZYLEN(messages))
-		to_chat(H, span_notice("Ты улавливаешь запахи вокруг:"))
-		for(var/entry in messages)
-			to_chat(H, span_info(entry))
+	var/mob/living/carbon/human/target_to_track = find_best_target(H, fingerprints_found)
+	if(target_to_track)
+		H.tajaran_scent_target = WEAKREF(target_to_track)
+		H.remove_status_effect(/datum/status_effect/agent_pinpointer/scan/tajaran_scent)
+		H.apply_status_effect(/datum/status_effect/agent_pinpointer/scan/tajaran_scent, target_to_track)
+		addtimer(CALLBACK(H, /mob/living/carbon/human/proc/clear_tajaran_scent_target), 30 SECONDS)
+		H.balloon_alert(H, "след найден")
+	else
+		H.balloon_alert(H, "следов не обнаружено")
 
 	StartCooldown()
+	return TRUE
 
-
-
-// --- Вспомогательные процедуры ---
-/datum/action/cooldown/tajaran_scent_scan/proc/gather_forensic_data(atom/scanned_atom)
-	if(!scanned_atom)
+// --- gather forensic ---
+/datum/action/cooldown/tajaran_scent_scan/proc/gather_forensic_data(atom/A)
+	if(!A)
 		return list()
+	var/list/log = list()
 
-	var/list/log_entry = list()
-
-	var/list/fibers = GET_ATOM_FIBRES(scanned_atom)
+	var/list/fibers = GET_ATOM_FIBRES(A)
 	if(LAZYLEN(fibers))
-		log_entry[DETSCAN_CATEGORY_FIBER] = fibers.Copy()
+		log[DETSCAN_CATEGORY_FIBER] = fibers.Copy()
 
-	var/list/blood = GET_ATOM_BLOOD_DNA(scanned_atom)
+	var/list/blood = GET_ATOM_BLOOD_DNA(A)
 	if(LAZYLEN(blood))
-		log_entry[DETSCAN_CATEGORY_BLOOD] = blood.Copy()
+		log[DETSCAN_CATEGORY_BLOOD] = blood.Copy()
 
-	var/list/prints = GET_ATOM_FINGERPRINTS(scanned_atom)
-	if(LAZYLEN(prints))
-		log_entry[DETSCAN_CATEGORY_FINGERS] = prints.Copy()
+	if(ishuman(A))
+		var/mob/living/carbon/human/H = A
+		if(!H.gloves && H.dna?.unique_identity)
+			log[DETSCAN_CATEGORY_FINGERS] = list(md5(H.dna.unique_identity))
+	else if(!ismob(A))
+		var/list/fps = GET_ATOM_FINGERPRINTS(A)
+		if(LAZYLEN(fps))
+			log[DETSCAN_CATEGORY_FINGERS] = fps.Copy()
 
-	if(scanned_atom.reagents)
-		for(var/datum/reagent/R in scanned_atom.reagents.reagent_list)
-			if(!log_entry[DETSCAN_CATEGORY_REAGENTS])
-				log_entry[DETSCAN_CATEGORY_REAGENTS] = list()
-			log_entry[DETSCAN_CATEGORY_REAGENTS][R.name] = R.volume
+	if(A.reagents)
+		for(var/datum/reagent/R as anything in A.reagents.reagent_list)
+			if(!log[DETSCAN_CATEGORY_REAGENTS])
+				log[DETSCAN_CATEGORY_REAGENTS] = list()
+			log[DETSCAN_CATEGORY_REAGENTS][R.name] = R.volume
+	return log
 
-	return log_entry
+// --- format forensic ---
+/datum/action/cooldown/tajaran_scent_scan/proc/format_forensic_message(atom/A, list/log)
+	var/list/out = list("<b>[A]</b>")
+	if(LAZYLEN(log[DETSCAN_CATEGORY_FIBER]))
+		out += "&bull; Волокна: [english_list(log[DETSCAN_CATEGORY_FIBER])]"
+	if(LAZYLEN(log[DETSCAN_CATEGORY_BLOOD]))
+		out += "&bull; Кровь: [english_list(log[DETSCAN_CATEGORY_BLOOD])]"
+	if(LAZYLEN(log[DETSCAN_CATEGORY_FINGERS]))
+		out += "&bull; Отпечатки: [english_list(log[DETSCAN_CATEGORY_FINGERS])]"
+	if(LAZYLEN(log[DETSCAN_CATEGORY_REAGENTS]))
+		var/list/r = list()
+		for(var/n in log[DETSCAN_CATEGORY_REAGENTS])
+			r += "[n] ([round(log[DETSCAN_CATEGORY_REAGENTS][n],0.1)]u)"
+		out += "&bull; Частицы: [r.Join(", ")]"
+	return out
 
-
-/datum/action/cooldown/tajaran_scent_scan/proc/format_forensic_message(atom/scanned_atom, list/log_entry)
-	if(!LAZYLEN(log_entry))
-		return null
-
-	var/list/lines = list("<b>[scanned_atom]</b>")
-
-	var/list/fibers = log_entry[DETSCAN_CATEGORY_FIBER]
-	if(LAZYLEN(fibers))
-		lines += "&bull; Волокна: [english_list(fibers)]"
-
-	var/list/blood_data = log_entry[DETSCAN_CATEGORY_BLOOD]
-	if(LAZYLEN(blood_data))
-		lines += "&bull; Кровь: [english_list(blood_data)]"
-
-	var/list/prints = log_entry[DETSCAN_CATEGORY_FINGERS]
-	if(LAZYLEN(prints))
-		lines += "&bull; Отпечатки: [english_list(prints)]"
-
-	var/list/reagents = log_entry[DETSCAN_CATEGORY_REAGENTS]
-	if(LAZYLEN(reagents))
-		var/list/r_lines = list()
-		for(var/name in reagents)
-			r_lines += "[name] ([round(reagents[name], 0.1)]u)"
-		lines += "&bull; Частицы: [r_lines.Join(", ")]"
-
-	return lines
-
-
-/datum/action/cooldown/tajaran_scent_scan/proc/find_best_target(mob/living/carbon/human/sniffer, list/fingerprints)
-	if(!sniffer || !LAZYLEN(fingerprints))
-		return null
-
-	for(var/mob/living/carbon/human/M in GLOB.human_list)
-		if(M == sniffer || M.stat == DEAD)
+// --- find target by prints ---
+/datum/action/cooldown/tajaran_scent_scan/proc/find_best_target(mob/living/carbon/human/sniffer, list/fps)
+	for(var/mob/living/carbon/human/C in GLOB.human_list)
+		if(QDELETED(C) || C.stat==DEAD || C==sniffer)
 			continue
-		if(md5(M.dna?.unique_identity) in fingerprints)
-			return M
+		if(md5(C.dna?.unique_identity) in fps)
+			return C
 	return null
 
+// ============================================================================
+// === STATUS EFFECT (направление + стрелка) ===
+// ============================================================================
 
-
-// --- Эффект наведения ---
 /datum/status_effect/agent_pinpointer/scan/tajaran_scent
 	id = "tajaran_scent"
-	duration = 31 SECONDS
-	tick_interval = 15 SECONDS
-	minimum_range = 1
-	range_mid = 6
-	range_far = 20
-	range_fuzz_factor = 0
+	duration = 30 SECONDS
+	tick_interval = 10 SECONDS
 	alert_type = /atom/movable/screen/alert/status_effect/agent_pinpointer/scan/tajaran_scent
 
 /datum/status_effect/agent_pinpointer/scan/tajaran_scent/on_creation(mob/living/new_owner, mob/living/carbon/human/target)
 	. = ..()
-	if(.)
-		scan_target = target
-		point_to_target()
+	if(.) { scan_target = target; point_to_target() }
 
 /datum/status_effect/agent_pinpointer/scan/tajaran_scent/point_to_target()
-	if(!owner || !scan_target)
-		qdel(src)
-		return
-
+	if(QDELETED(owner) || QDELETED(scan_target)) { qdel(src); return }
 	var/turf/here = get_turf(owner)
 	var/turf/there = get_turf(scan_target)
-	if(!here || !there || here.z != there.z)
-		return
+	if(!here || !there) return
+	if(here.z != there.z) { owner.balloon_alert(owner,"на другом уровне!"); return }
 
-	to_chat(owner, span_notice("Запах цели доносится с [dir2text(get_dir(here, there))]."))
+	var/msg = get_tajaran_scent_balloon(owner, scan_target)
+	owner.balloon_alert(owner, msg)
 
+	var/dist = get_dist(here,there)
+	var/col = COLOR_RED
+	switch(dist)
+		if(0 to 15) col=COLOR_GREEN
+		if(16 to 31) col=COLOR_YELLOW
+		if(32 to 127) col=COLOR_ORANGE
+	if(owner.hud_used)
+		new /atom/movable/screen/navigate_arrow(null, owner.hud_used, there, col)
 
 /atom/movable/screen/alert/status_effect/agent_pinpointer/scan/tajaran_scent
 	name = "След"
 	desc = "Ты чувствуешь направление источника запаха."
 
+// ============================================================================
+// === TRACKING ABILITY ===
+// ============================================================================
+/datum/action/cooldown/tajaran_scent_tracking
+	name = "Нюх — След"
+	desc = "Сконцентрируйся, чтобы почувствовать направление источника запаха, найденного ранее."
+	background_icon_state = "bg_default"
+	button_icon = 'icons/mob/actions/actions_spells.dmi'
+	button_icon_state = "nose"
+	cooldown_time = 2 SECONDS
+	check_flags = AB_CHECK_CONSCIOUS
 
+// --- Проверка доступности ---
+/datum/action/cooldown/tajaran_scent_tracking/IsAvailable(feedback = FALSE)
+	var/mob/living/carbon/human/H = owner
+	if(!H)
+		return FALSE
+	var/mob/living/carbon/human/T = H.tajaran_scent_target ? H.tajaran_scent_target.resolve() : null
+	if(!T || QDELETED(T))
+		if(feedback)
+			H.balloon_alert(H, "ничего не чувствую")
+		return FALSE
+	return TRUE
+
+// --- Активация: стрелка + текст ---
+/datum/action/cooldown/tajaran_scent_tracking/Activate(atom/target)
+	var/mob/living/carbon/human/H = owner
+	if(!H)
+		return FALSE
+
+	var/mob/living/carbon/human/T = H.tajaran_scent_target ? H.tajaran_scent_target.resolve() : null
+	if(!T || QDELETED(T))
+		H.balloon_alert(H, "след пропал")
+		return TRUE
+
+	var/msg = get_tajaran_scent_balloon(H, T)
+	if(msg)
+		H.balloon_alert(H, msg)
+
+	var/turf/here = get_turf(H)
+	var/turf/there = get_turf(T)
+	if(!here || !there)
+		return TRUE
+
+	// динамическая стрелка (цвет зависит от расстояния)
+	var/dist = get_dist(here, there)
+	var/col = COLOR_RED
+	switch(dist)
+		if(0 to 15) col = COLOR_GREEN
+		if(16 to 31) col = COLOR_YELLOW
+		if(32 to 127) col = COLOR_ORANGE
+
+	if(H.hud_used)
+		new /atom/movable/screen/navigate_arrow(null, H.hud_used, there, col)
+
+	StartCooldown()
+	return TRUE
+
+// ============================================================================
+// === helper: balloon text ===
+// ============================================================================
+/proc/get_tajaran_scent_balloon(mob/living/you, mob/living/them)
+	var/turf/yt=get_turf(you)
+	var/turf/tt=get_turf(them)
+	if(!yt||!tt) return "на другом плане!"
+	if(yt.z!=tt.z) return "на другом уровне!"
+	var/d=get_dir(yt,tt)
+	var/dist=get_dist(yt,tt)
+	switch(dist)
+		if(0 to 8) return "очень близко, [dir2text(d)]!"
+		if(9 to 16) return "близко, [dir2text(d)]!"
+		if(17 to 64) return "далеко, [dir2text(d)]!"
+		else return "очень далеко!"
 
 /datum/species/tajaran/create_pref_unique_perks()
 	var/list/to_add = list()
