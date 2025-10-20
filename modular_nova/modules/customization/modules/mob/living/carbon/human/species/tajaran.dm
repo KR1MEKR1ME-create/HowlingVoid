@@ -248,8 +248,8 @@
 // === Визуальный предмет в руке во время принюхивания ===
 /obj/item/hand_item/tajaran_scent_focus
 	name = "scent focus"
-	button_icon = 'modular_nova/modules/organs/icons/cyber_tongue.dmi'
-	button_icon_state = "cybertongue"
+	icon = 'modular_nova/modules/organs/icons/cyber_tongue.dmi'
+	icon_state = "cybertongue"
 	inhand_icon_state = "nothing"
 	flags_1 = NONE
 	item_flags = ABSTRACT | DROPDEL
